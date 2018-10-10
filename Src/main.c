@@ -53,7 +53,7 @@
 #include "usb_device.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "mpu6050.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -67,11 +67,10 @@ osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-char memsenseBuffer[1000];
 
-char mpu6050Buffer[1000];
-
-char novatelBuffer[1000];
+// uint8_t memsenseBuffer[1000];
+uint8_t mpu6050Buffer[14];
+// uint8_t novatelBuffer[1000];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -126,6 +125,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  /* Imu MPU6050 */
+  MPU6050Imu imu6050;
+  // MPU6050Config mpuConfig;
+  /* Init MPU6050 */
+  mpu6050_configDevice(&imu6050, 0, 0);
 
   /* USER CODE END 2 */
 
@@ -168,7 +172,7 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-
+    mpu6050_geData(&imu6050);
   }
   /* USER CODE END 3 */
 
@@ -410,6 +414,7 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
+    break;
   }
   /* USER CODE END Error_Handler_Debug */
 }
