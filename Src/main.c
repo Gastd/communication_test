@@ -68,6 +68,9 @@ osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
+/* Imu MPU6050 */
+MPU6050Imu imu6050;
+
 // uint8_t memsenseBuffer[1000];
 uint8_t mpu6050Buffer[14];
 // uint8_t novatelBuffer[1000];
@@ -125,11 +128,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  /* Imu MPU6050 */
-  MPU6050Imu imu6050;
-  // MPU6050Config mpuConfig;
+
   /* Init MPU6050 */
-  mpu6050_configDevice(&imu6050, 0, 0);
+  mpu6050_configDevice(&imu6050, &hi2c1, 0, 0);
 
   /* USER CODE END 2 */
 
@@ -172,7 +173,6 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-    mpu6050_geData(&imu6050);
   }
   /* USER CODE END 3 */
 
@@ -373,9 +373,26 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 5 */
+  int16_t dx, dy, dz;
+  double x, y, z;
+  double ds = 1.0/16384.0;
+  double g = 9.81;
   /* Infinite loop */
   for(;;)
   {
+    mpu6050_geData(&imu6050);
+    uint8_t* pointer = imu6050.lastData;
+    printf("%p", pointer);
+    dx = (imu6050.lastData[0] << 8 | imu6050.lastData[1]);
+    dy = (imu6050.lastData[2] << 8 | imu6050.lastData[3]);
+    dz = (imu6050.lastData[4] << 8 | imu6050.lastData[5]);
+
+    x = g * ds * dx;
+    y = g * ds * dy;
+    z = g * ds * dz;
+
+    printf("X = %d Y = %d Z = %d\n", x,y,z);
+    HAL_Delay(100);
     osDelay(1);
   }
   /* USER CODE END 5 */ 
