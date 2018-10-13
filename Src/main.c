@@ -54,6 +54,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "mpu6050.h"
+#include "memsense_nanoimu.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -67,9 +68,14 @@ osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+/* UART status declaration */
+__IO ITStatus Uart1Ready = RESET;
+__IO ITStatus Uart2Ready = RESET;
+__IO ITStatus Uart3Ready = RESET;
 
 /* Imu MPU6050 */
 MPU6050Imu imu6050;
+MEMSenseImu nanoImu;
 
 // uint8_t memsenseBuffer[1000];
 uint8_t mpu6050Buffer[14];
@@ -131,6 +137,7 @@ int main(void)
 
   /* Init MPU6050 */
   mpu6050_configDevice(&imu6050, &hi2c1, 0, 0);
+  NANOIMU_configDevice(&nanoImu, &huart1);
 
   /* USER CODE END 2 */
 
@@ -265,7 +272,7 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.Mode = UART_MODE_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   if (HAL_UART_Init(&huart1) != HAL_OK)
@@ -373,29 +380,94 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 5 */
-  int16_t dx, dy, dz;
-  double x, y, z;
-  double ds = 1.0/16384.0;
-  double g = 9.81;
+  // double ax, ay, az;
+  // double ds_accel = 1.0/16384.0;
+  // double g = 9.80665;
+
+  // int16_t temp;
+  // double temperature;
+
+  // int16_t ex, ey, ez;
+  // double gx, gy, gz;
+
+  // double ds_gyr = 1.0/131.0;
   /* Infinite loop */
   for(;;)
   {
-    mpu6050_geData(&imu6050);
-    uint8_t* pointer = imu6050.lastData;
-    printf("%p", pointer);
-    dx = (imu6050.lastData[0] << 8 | imu6050.lastData[1]);
-    dy = (imu6050.lastData[2] << 8 | imu6050.lastData[3]);
-    dz = (imu6050.lastData[4] << 8 | imu6050.lastData[5]);
-
-    x = g * ds * dx;
-    y = g * ds * dy;
-    z = g * ds * dz;
-
-    printf("X = %d Y = %d Z = %d\n", x,y,z);
-    HAL_Delay(100);
+    // mpu6050_geData(&imu6050);
+    NANOIMU_geData(&nanoImu);
+    uint8_t* pointer = nanoImu.data;
+    printf("%p\n", pointer);
+    HAL_Delay(5);
     osDelay(1);
   }
   /* USER CODE END 5 */ 
+}
+
+/**
+  * @brief  Tx Transfer completed callback
+  * @param  UartHandle: UART handle. 
+  * @note   This example shows a simple way to report end of IT Tx transfer, and 
+  *         you can add your own implementation. 
+  * @retval None
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  if (UartHandle->Instance == USART1)
+  {
+    Uart1Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART2)
+  {
+    Uart2Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART3)
+  {
+    Uart3Ready = SET;
+  }
+
+}
+
+/**
+  * @brief  Rx Transfer completed callback
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report end of DMA Rx transfer, and 
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  if (UartHandle->Instance == USART1)
+  {
+    Uart1Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART2)
+  {
+    Uart2Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART3)
+  {
+    Uart3Ready = SET;
+  }
+  
+}
+
+/**
+  * @brief  UART error callbacks
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report transfer error, and you can
+  *         add your own implementation.
+  * @retval None
+  */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
+{
+    Error_Handler();
 }
 
 /**
