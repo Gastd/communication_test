@@ -23,5 +23,5 @@ typedef struct
 
 }MPU6050Imu;
 
-void mpu6050_configDevice(MPU6050Imu *imu6050, I2C_HandleTypeDef* interface, uint32_t accelConfig, uint32_t gyroConfig);
-void mpu6050_geData(MPU6050Imu *imu6050);
+void MPU6050_configDevice(MPU6050Imu *imu6050, I2C_HandleTypeDef* interface, uint32_t accelConfig, uint32_t gyroConfig);
+void MPU6050_geData(MPU6050Imu *imu6050);

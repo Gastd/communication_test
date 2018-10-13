@@ -14,7 +14,7 @@ uint16_t trials, timeout;
 // void mpu6050_requestData(MPU6050Imu *imu6050, uint32_t memAddress, uint8_t *buffer);
 
 /* Body Functions ------------------------------------------------------------*/
-void mpu6050_configDevice(MPU6050Imu *imu6050, I2C_HandleTypeDef* interface, uint32_t accelConfig, uint32_t gyroConfig)
+void MPU6050_configDevice(MPU6050Imu *imu6050, I2C_HandleTypeDef* interface, uint32_t accelConfig, uint32_t gyroConfig)
 {
     trials = 100;
     timeout = 100;
@@ -59,10 +59,8 @@ void mpu6050_configDevice(MPU6050Imu *imu6050, I2C_HandleTypeDef* interface, uin
 
 }
 
-void mpu6050_geData(MPU6050Imu *imu6050)
+void MPU6050_geData(MPU6050Imu *imu6050)
 {
-    printf("%d", imu6050->I2CInterface->State);
-    uint32_t status;
     uint32_t deviceAddress = imu6050->deviceAddress;
     uint32_t memAddress = imu6050->memAddress;
     uint32_t size = imu6050->memSize;
