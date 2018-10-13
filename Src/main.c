@@ -75,11 +75,9 @@ __IO ITStatus Uart3Ready = RESET;
 
 /* Imu MPU6050 */
 MPU6050Imu imu6050;
+/* MemSense NanoImu */
 MEMSenseImu nanoImu;
 
-// uint8_t memsenseBuffer[1000];
-uint8_t mpu6050Buffer[14];
-// uint8_t novatelBuffer[1000];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -136,7 +134,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* Init MPU6050 */
-  mpu6050_configDevice(&imu6050, &hi2c1, 0, 0);
+  MPU6050_configDevice(&imu6050, &hi2c1, 0, 0);
   NANOIMU_configDevice(&nanoImu, &huart1);
 
   /* USER CODE END 2 */
@@ -268,7 +266,7 @@ static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = NANOIMU_BPS;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
