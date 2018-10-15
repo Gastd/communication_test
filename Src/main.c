@@ -55,6 +55,7 @@
 /* USER CODE BEGIN Includes */
 #include "mpu6050.h"
 #include "memsense_nanoimu.h"
+#include "novatel_gps.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -75,8 +76,19 @@ __IO ITStatus Uart3Ready = RESET;
 
 /* Imu MPU6050 */
 MPU6050Imu imu6050;
+/* Novatel GPS OEMV-1 */
+NovatelGPS novatelGps;
 /* MemSense NanoImu */
 MEMSenseImu nanoImu;
+
+#define BXYZ_PSTAT    (D_HDR_LEN)
+#define BXYZ_PTYPE    (D_HDR_LEN+4)
+#define BXYZ_PX     (D_HDR_LEN+8)
+#define BXYZ_PY     (D_HDR_LEN+16)
+#define BXYZ_PZ     (D_HDR_LEN+24)
+#define BXYZ_sPX    (D_HDR_LEN+32)
+#define BXYZ_sPY    (D_HDR_LEN+36)
+#define BXYZ_sPZ    (D_HDR_LEN+40)
 
 /* USER CODE END PV */
 
@@ -136,6 +148,7 @@ int main(void)
   /* Init MPU6050 */
   MPU6050_configDevice(&imu6050, &hi2c1, 0, 0);
   NANOIMU_configDevice(&nanoImu, &huart1);
+  NOVATELGPS_configDevice(&novatelGps, &huart2);
 
   /* USER CODE END 2 */
 
@@ -387,15 +400,19 @@ void StartDefaultTask(void const * argument)
 
   // int16_t ex, ey, ez;
   // double gx, gy, gz;
+  double x, y, z;
 
   // double ds_gyr = 1.0/131.0;
   /* Infinite loop */
   for(;;)
   {
     // mpu6050_geData(&imu6050);
-    NANOIMU_geData(&nanoImu);
-    uint8_t* pointer = nanoImu.data;
+    NOVATELGPS_geData(&novatelGps);
+    uint8_t* pointer = novatelGps.messageData;
     printf("%p\n", pointer);
+    memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
+    memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
+    memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
     HAL_Delay(5);
     osDelay(1);
   }
