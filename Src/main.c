@@ -279,7 +279,7 @@ static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = NANOIMU_BPS;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -376,6 +376,72 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief  Tx Transfer completed callback
+  * @param  UartHandle: UART handle.
+  * @note   This example shows a simple way to report end of IT Tx transfer, and
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  if (UartHandle->Instance == USART1)
+  {
+    Uart1Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART2)
+  {
+    Uart2Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART3)
+  {
+    Uart3Ready = SET;
+  }
+
+}
+
+/**
+  * @brief  Rx Transfer completed callback
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report end of DMA Rx transfer, and
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  if (UartHandle->Instance == USART1)
+  {
+    Uart1Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART2)
+  {
+    Uart2Ready = SET;
+  }
+
+  if (UartHandle->Instance == USART3)
+  {
+    Uart3Ready = SET;
+  }
+
+}
+
+/**
+  * @brief  UART error callbacks
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report transfer error, and you can
+  *         add your own implementation.
+  * @retval None
+  */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
+{
+    Error_Handler();
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -408,8 +474,7 @@ void StartDefaultTask(void const * argument)
   {
     // mpu6050_geData(&imu6050);
     NOVATELGPS_geData(&novatelGps);
-    uint8_t* pointer = novatelGps.messageData;
-    printf("%p\n", pointer);
+    volatile uint8_t* pointer = novatelGps.messageData;
     memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
     memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
     memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
@@ -417,72 +482,6 @@ void StartDefaultTask(void const * argument)
     osDelay(1);
   }
   /* USER CODE END 5 */ 
-}
-
-/**
-  * @brief  Tx Transfer completed callback
-  * @param  UartHandle: UART handle. 
-  * @note   This example shows a simple way to report end of IT Tx transfer, and 
-  *         you can add your own implementation. 
-  * @retval None
-  */
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
-{
-  /* Set transmission flag: transfer complete */
-  if (UartHandle->Instance == USART1)
-  {
-    Uart1Ready = SET;
-  }
-
-  if (UartHandle->Instance == USART2)
-  {
-    Uart2Ready = SET;
-  }
-
-  if (UartHandle->Instance == USART3)
-  {
-    Uart3Ready = SET;
-  }
-
-}
-
-/**
-  * @brief  Rx Transfer completed callback
-  * @param  UartHandle: UART handle
-  * @note   This example shows a simple way to report end of DMA Rx transfer, and 
-  *         you can add your own implementation.
-  * @retval None
-  */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
-{
-  /* Set transmission flag: transfer complete */
-  if (UartHandle->Instance == USART1)
-  {
-    Uart1Ready = SET;
-  }
-
-  if (UartHandle->Instance == USART2)
-  {
-    Uart2Ready = SET;
-  }
-
-  if (UartHandle->Instance == USART3)
-  {
-    Uart3Ready = SET;
-  }
-  
-}
-
-/**
-  * @brief  UART error callbacks
-  * @param  UartHandle: UART handle
-  * @note   This example shows a simple way to report transfer error, and you can
-  *         add your own implementation.
-  * @retval None
-  */
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
-{
-    Error_Handler();
 }
 
 /**
@@ -518,7 +517,7 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
-    break;
+    __NOP();
   }
   /* USER CODE END Error_Handler_Debug */
 }
