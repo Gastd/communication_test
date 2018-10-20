@@ -66,6 +66,8 @@ UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
 osThreadId defaultTaskHandle;
+osThreadId imuComTaskHandle;
+osThreadId gpsComTaskHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -103,6 +105,7 @@ void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+void ImuComTask(void const * argument);
 
 /* USER CODE END PFP */
 
@@ -150,6 +153,11 @@ int main(void)
   NANOIMU_configDevice(&nanoImu, &huart1);
   NOVATELGPS_configDevice(&novatelGps, &huart2);
 
+  uint8_t buffer[IMU_PACKET_SIZE];
+  if(HAL_UART_Receive_IT(nanoImu.UARTInterface, nanoImu.data, 38) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -171,6 +179,9 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  osThreadDef(imuTask, ImuComTask, osPriorityNormal, 0, 128);
+  imuComTaskHandle = osThreadCreate(osThread(imuTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -439,7 +450,74 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
+  if (UartHandle->Instance == USART1)
+  {
     Error_Handler();
+  }
+
+  if (UartHandle->Instance == USART2)
+  {
+    Error_Handler();
+  }
+
+  if (UartHandle->Instance == USART3)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used 
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void ImuComTask(void const * argument)
+{
+  double ax, ay, az;
+  double ds_accel = 9.1553E-5;
+  double g = 9.80665;
+
+  int16_t dx, dy, dz;
+  double x, y, z;
+  double ds = 1.0/16384.0;
+
+  for(;;)
+  {
+    volatile uint8_t *nano_data = nanoImu.data;
+    volatile uint8_t *mpu_data = imu6050.lastData;
+
+    // if(HAL_UART_Receive_IT(nanoImu.UARTInterface, buffer, IMU_PACKET_SIZE) != HAL_OK)
+    // {
+      // Error_Handler();
+    // }
+    volatile uint16_t def = nanoImu.UARTInterface->RxXferCount;
+    while (Uart1Ready != SET)
+    {
+    }
+
+    Uart1Ready = RESET;
+
+    MPU6050_geData(&imu6050);
+
+    dx = (imu6050.lastData[0] << 8 | imu6050.lastData[1]);
+    dy = (imu6050.lastData[2] << 8 | imu6050.lastData[3]);
+    dz = (imu6050.lastData[4] << 8 | imu6050.lastData[5]);
+
+    x = g * ds * dx;
+    y = g * ds * dy;
+    z = g * ds * dz;
+
+    dx = (nanoImu.data[ACCX_MSB] << 8 | nanoImu.data[ACCX_LSB]);
+    dy = (nanoImu.data[ACCY_MSB] << 8 | nanoImu.data[ACCY_LSB]);
+    dz = (nanoImu.data[ACCZ_MSB] << 8 | nanoImu.data[ACCZ_LSB]);
+
+    ax = g * ds_accel * dx;
+    ay = g * ds_accel * dy;
+    az = g * ds_accel * dz;
+
+    osDelay(6);
+  }
 }
 
 /* USER CODE END 4 */
@@ -472,13 +550,11 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    // mpu6050_geData(&imu6050);
-    NOVATELGPS_geData(&novatelGps);
+    // NOVATELGPS_geData(&novatelGps);
     volatile uint8_t* pointer = novatelGps.messageData;
-    memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
-    memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
-    memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
-    HAL_Delay(5);
+    // memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
+    // memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
+    // memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
     osDelay(1);
   }
   /* USER CODE END 5 */ 
@@ -517,7 +593,7 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
-    __NOP();
+    break;
   }
   /* USER CODE END Error_Handler_Debug */
 }
