@@ -176,6 +176,9 @@ int main(void)
 
   osThreadDef(imuTask, ImuComTask, osPriorityNormal, 0, 128);
   imuComTaskHandle = osThreadCreate(osThread(imuTask), NULL);
+
+  osThreadDef(gpsTask, GpsComTask, osPriorityNormal, 0, 128);
+  gpsComTaskHandle = osThreadCreate(osThread(gpsTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -463,7 +466,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 }
 
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the imuTask thread.
   * @param  argument: Not used 
   * @retval None
   */
@@ -487,6 +490,32 @@ void ImuComTask(void const * argument)
 
     MPU6050_geData(&imu6050);
     counter++;
+  }
+}
+
+/**
+  * @brief  Function implementing the gpsTask thread.
+  * @param  argument: Not used 
+  * @retval None
+  */
+void GpsComTask(void const * argument)
+{
+
+  for(;;)
+  {
+    volatile uint8_t *gps_data = novatelGps.messageData;
+
+    if(HAL_UART_Receive_IT(novatelGps.UARTInterface, novatelGps.messageData, IMU_PACKET_SIZE) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    volatile uint16_t def = novatelGps.UARTInterface->RxXferCount;
+
+    while (Uart2Ready != SET)
+    {
+    }
+
+    Uart2Ready = RESET;
   }
 }
 
