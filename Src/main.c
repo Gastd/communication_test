@@ -82,7 +82,7 @@ MPU6050Imu imu6050;
 NovatelGPS novatelGps;
 /* MemSense NanoImu */
 MEMSenseImu nanoImu;
-
+int counter;
 #define BXYZ_PSTAT    (D_HDR_LEN)
 #define BXYZ_PTYPE    (D_HDR_LEN+4)
 #define BXYZ_PX     (D_HDR_LEN+8)
@@ -148,16 +148,10 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  /* Init MPU6050 */
   MPU6050_configDevice(&imu6050, &hi2c1, 0, 0);
   NANOIMU_configDevice(&nanoImu, &huart1);
   NOVATELGPS_configDevice(&novatelGps, &huart2);
-
-  uint8_t buffer[IMU_PACKET_SIZE];
-  if(HAL_UART_Receive_IT(nanoImu.UARTInterface, nanoImu.data, 38) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  counter = 0;
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -450,8 +444,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
+  volatile uint32_t err;
   if (UartHandle->Instance == USART1)
   {
+    err = HAL_UART_GetError(UartHandle);
     Error_Handler();
   }
 
@@ -471,27 +467,18 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
   * @param  argument: Not used 
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
 void ImuComTask(void const * argument)
 {
-  double ax, ay, az;
-  double ds_accel = 9.1553E-5;
-  double g = 9.80665;
-
-  int16_t dx, dy, dz;
-  double x, y, z;
-  double ds = 1.0/16384.0;
-
   for(;;)
   {
     volatile uint8_t *nano_data = nanoImu.data;
     volatile uint8_t *mpu_data = imu6050.lastData;
 
-    // if(HAL_UART_Receive_IT(nanoImu.UARTInterface, buffer, IMU_PACKET_SIZE) != HAL_OK)
-    // {
-      // Error_Handler();
-    // }
-    volatile uint16_t def = nanoImu.UARTInterface->RxXferCount;
+    if(HAL_UART_Receive_IT(nanoImu.UARTInterface, nanoImu.data, IMU_PACKET_SIZE) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
     while (Uart1Ready != SET)
     {
     }
@@ -499,24 +486,7 @@ void ImuComTask(void const * argument)
     Uart1Ready = RESET;
 
     MPU6050_geData(&imu6050);
-
-    dx = (imu6050.lastData[0] << 8 | imu6050.lastData[1]);
-    dy = (imu6050.lastData[2] << 8 | imu6050.lastData[3]);
-    dz = (imu6050.lastData[4] << 8 | imu6050.lastData[5]);
-
-    x = g * ds * dx;
-    y = g * ds * dy;
-    z = g * ds * dz;
-
-    dx = (nanoImu.data[ACCX_MSB] << 8 | nanoImu.data[ACCX_LSB]);
-    dy = (nanoImu.data[ACCY_MSB] << 8 | nanoImu.data[ACCY_LSB]);
-    dz = (nanoImu.data[ACCZ_MSB] << 8 | nanoImu.data[ACCZ_LSB]);
-
-    ax = g * ds_accel * dx;
-    ay = g * ds_accel * dy;
-    az = g * ds_accel * dz;
-
-    osDelay(6);
+    counter++;
   }
 }
 
@@ -552,10 +522,14 @@ void StartDefaultTask(void const * argument)
   {
     // NOVATELGPS_geData(&novatelGps);
     volatile uint8_t* pointer = novatelGps.messageData;
+    char str[12];
+    sprintf(str, "led %d\n", counter);
+    CDC_Transmit_FS(str, strlen(str));
+    // CDC_Transmit_FS(nanoImu.data, IMU_PACKET_SIZE);
     // memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
     // memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
     // memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END 5 */ 
 }
@@ -593,7 +567,7 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
-    break;
+    //break;
   }
   /* USER CODE END Error_Handler_Debug */
 }
