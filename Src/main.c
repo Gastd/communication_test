@@ -71,6 +71,15 @@ osThreadId gpsComTaskHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+typedef struct
+{
+  uint8_t flag;
+  char file[100];
+  uint32_t line;
+}Error;
+
+Error error;
+
 /* UART status declaration */
 __IO ITStatus Uart1Ready = RESET;
 __IO ITStatus Uart2Ready = RESET;
@@ -106,6 +115,7 @@ void StartDefaultTask(void const * argument);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 void ImuComTask(void const * argument);
+void GpsComTask(void const * argument);
 
 /* USER CODE END PFP */
 
@@ -152,6 +162,11 @@ int main(void)
   NANOIMU_configDevice(&nanoImu, &huart1);
   NOVATELGPS_configDevice(&novatelGps, &huart2);
   counter = 0;
+
+  /*Init error flag*/
+  error.flag = 0;
+  error.file[0] = '\0';
+  error.line = 0;
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -414,7 +429,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 /**
   * @brief  Rx Transfer completed callback
   * @param  UartHandle: UART handle
-  * @note   This example shows a simple way to report end of DMA Rx transfer, and
+  * @note   This example shows a simple way to report end of IT Rx transfer, and
   *         you can add your own implementation.
   * @retval None
   */
@@ -447,16 +462,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
-  volatile uint32_t err;
   if (UartHandle->Instance == USART1)
   {
-    err = HAL_UART_GetError(UartHandle);
-    Error_Handler();
+    nanoImu.status = HAL_UART_GetError(UartHandle);
+    Uart1Ready = SET;
   }
 
   if (UartHandle->Instance == USART2)
   {
-    Error_Handler();
+    novatelGps.status = HAL_UART_GetError(UartHandle);
+    Uart2Ready = SET;
   }
 
   if (UartHandle->Instance == USART3)
@@ -503,19 +518,19 @@ void GpsComTask(void const * argument)
 
   for(;;)
   {
-    volatile uint8_t *gps_data = novatelGps.messageData;
+    // volatile uint8_t *gps_data = novatelGps.messageData;
 
-    if(HAL_UART_Receive_IT(novatelGps.UARTInterface, novatelGps.messageData, IMU_PACKET_SIZE) != HAL_OK)
-    {
-      Error_Handler();
-    }
-    volatile uint16_t def = novatelGps.UARTInterface->RxXferCount;
+    // if(HAL_UART_Receive_IT(novatelGps.UARTInterface, novatelGps.messageData, IMU_PACKET_SIZE) != HAL_OK)
+    // {
+    //   Error_Handler();
+    // }
 
-    while (Uart2Ready != SET)
-    {
-    }
+    // while (Uart2Ready != SET)
+    // {
+    // }
 
-    Uart2Ready = RESET;
+    // Uart2Ready = RESET;
+    osDelay(50);
   }
 }
 
@@ -534,31 +549,29 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 5 */
-  // double ax, ay, az;
-  // double ds_accel = 1.0/16384.0;
-  // double g = 9.80665;
-
-  // int16_t temp;
-  // double temperature;
-
-  // int16_t ex, ey, ez;
-  // double gx, gy, gz;
-  double x, y, z;
-
-  // double ds_gyr = 1.0/131.0;
+  uint8_t message[800];
   /* Infinite loop */
   for(;;)
   {
-    // NOVATELGPS_geData(&novatelGps);
-    volatile uint8_t* pointer = novatelGps.messageData;
-    char str[12];
-    sprintf(str, "led %d\n", counter);
-    CDC_Transmit_FS(str, strlen(str));
+    
+    if (error.flag)
+    {
+      message[0] = '{'
+      /* code */
+      char str[12];
+      char atr[12];
+      sprintf(str, "status %d\n", nanoImu.status);
+      CDC_Transmit_FS(str, strlen(str));
+      sprintf(atr, "led %d\n", counter);
+      CDC_Transmit_FS(atr, strlen(atr));
+    }
+    else
+    {
+
+    }
     // CDC_Transmit_FS(nanoImu.data, IMU_PACKET_SIZE);
-    // memcpy(&x, &pointer[BXYZ_PX], sizeof(double));
-    // memcpy(&y, &pointer[BXYZ_PY], sizeof(double));
-    // memcpy(&z, &pointer[BXYZ_PZ], sizeof(double));
-    osDelay(10);
+    /*100 Hz*/
+    osDelay(100);
   }
   /* USER CODE END 5 */ 
 }
@@ -596,7 +609,10 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
-    //break;
+    error.flag = 1;
+    strcpy(error.file, file);
+    error.line = line;
+    break;
   }
   /* USER CODE END Error_Handler_Debug */
 }
